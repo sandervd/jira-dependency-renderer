@@ -3,9 +3,9 @@
 use GuzzleHttp\Client;
 class jira {
 
-  protected $nodes;
+  protected $nodes = [];
 
-  protected $blocks;
+  protected $blocks = [];
   /**
    * @var Client GuzzleClient
    */
@@ -49,40 +49,7 @@ class jira {
     return $out;
   }
 
-  public function asJson() {
-    $out = [];
-    $map = [];
-    foreach ($this->blocks as $source => $target) {
-      $target_values = array_keys($target);
-      foreach ($target_values as $target_value) {
-        $out['links'][] = [
-          'value' => 2,
-          'source' => $source,
-          'target' => $target_value,
-        ];
-        $nodes_to_render[$source] = $source;
-        $nodes_to_render[$target_value] = $target_value;
 
-      }
-    }
-    foreach ($this->nodes as $key => $summary) {
-      if (isset($nodes_to_render[$key])) {
-        $out['nodes'][] = [
-          'id' => (string) $key,
-          'name' => str_replace('"', "'", $summary),
-        ];
-        $map[] = (string) $key;
-      }
-    }
-    foreach ($out['links'] as $key => &$link) {
-      $link['source'] = array_search($link['source'], $map);
-      $link['target'] = array_search($link['target'], $map);
-    }
-
-
-
-    return \GuzzleHttp\json_encode($out);
-  }
 
   protected function search($jql) {
     $uri = 'rest/api/2/search';
