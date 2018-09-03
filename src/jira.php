@@ -49,8 +49,6 @@ class jira {
     return $out;
   }
 
-
-
   protected function search($jql) {
     $uri = 'rest/api/2/search';
     $resp = $this->conn->post($uri, [
@@ -67,7 +65,8 @@ class jira {
             "id",
             "key",
             "summary",
-            "issuelinks"
+            "issuelinks",
+            "subtasks"
           ]
         ]
       ]
@@ -86,22 +85,46 @@ class jira {
   }
 
   function handleIssue($issue) {
-    $key = $issue->key;
+    $issue_key = $issue->key;
     $summary = $issue->fields->summary;
-    $this->nodes[$key] = $summary;
+    $this->nodes[$issue_key] = $summary;
     $fields = $issue->fields;
-    if (empty($fields->issuelinks)) {
-      return;
+    if (!empty($fields->issuelinks)) {
+      $this->handleIssueLinks($fields->issuelinks, $issue_key);
     }
-    foreach ($fields->issuelinks as $field) {
+    if (!empty($fields->subtasks)) {
+        $this->handleSubTasks($fields->subtasks, $issue_key);
+    }
+  }
+
+  /**
+   * Add linked issues to the graph.
+   *
+   * @param $fields
+   * @param $issue_key
+   */
+  public function handleIssueLinks($issueFields, $issue_key) {
+    foreach ($issueFields as $field) {
       if (isset($field->outwardIssue)) {
-        $this->blocks[$field->outwardIssue->key][$key] = TRUE;
+        $this->blocks[$field->outwardIssue->key][$issue_key] = TRUE;
         $this->nodes[$field->outwardIssue->key] = $field->outwardIssue->fields->summary;
       }
       if (isset($field->inwardIssue)) {
-        $this->blocks[$key][$field->inwardIssue->key] = TRUE;
+        $this->blocks[$issue_key][$field->inwardIssue->key] = TRUE;
         $this->nodes[$field->inwardIssue->key] = $field->inwardIssue->fields->summary;
       }
     }
   }
+    /**
+     * Add subtasks to the graph.
+     *
+     * @param $fields
+     * @param $issue_key
+     */
+    public function handleSubTasks($subTasks, $issue_key) {
+      foreach ($subTasks as $field) {
+          $this->blocks[$issue_key][$field->key] = TRUE;
+          $this->nodes[$field->key] = $field->fields->summary;
+      }
+    }
 }
